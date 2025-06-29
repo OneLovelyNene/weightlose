@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { TrendingUp, Calendar, Target, Zap, Weight, ScanLine, Droplets, Plus, ChartBar as BarChart3, Utensils, Sun, Cloud, CloudRain, SunSnow as Snow, CloudDrizzle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { getWeightEntries, getFoodEntries, getUserSettings, formatWeight, formatVolume } from '@/utils/storage';
-import { WeightEntry, FoodEntry, UserSettings } from '@/types';
+import { getWeightEntries, getFoodEntries, getUserSettings, getUserProfile, formatWeight, formatVolume } from '@/utils/storage';
+import { WeightEntry, FoodEntry, UserSettings, UserProfile } from '@/types';
 
 const { width } = Dimensions.get('window');
 
@@ -198,6 +198,13 @@ export default function Dashboard() {
     darkModeEnabled: false,
     region: 'metric',
   });
+  const [profile, setProfile] = useState<UserProfile>({
+    id: 'default_user',
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
 
   const styles = getStyles(settings.darkModeEnabled);
 
@@ -219,9 +226,11 @@ export default function Dashboard() {
       const weights = await getWeightEntries();
       const foods = await getFoodEntries();
       const userSettings = await getUserSettings();
+      const userProfile = await getUserProfile();
       
       setWeightEntries(weights);
       setSettings(userSettings);
+      setProfile(userProfile);
       
       // Calculate today's data
       const today = new Date().toDateString();
@@ -288,14 +297,14 @@ export default function Dashboard() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    const name = "John"; // In a real app, this would come from user profile
+    const firstName = profile.name.split(' ')[0]; // Get first name from full name
     
     if (hour < 12) {
-      return `Good morning, ${name}!`;
+      return `Good morning, ${firstName}!`;
     } else if (hour < 17) {
-      return `Good afternoon, ${name}!`;
+      return `Good afternoon, ${firstName}!`;
     } else {
-      return `Good evening, ${name}!`;
+      return `Good evening, ${firstName}!`;
     }
   };
 

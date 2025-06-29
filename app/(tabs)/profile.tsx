@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, Modal } from 'react-native';
-import { User, Target, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, CreditCard as Edit3, Save, X, Scale, Droplets, Globe } from 'lucide-react-native';
-import { clearAllData, getUserSettings, saveUserSettings } from '@/utils/storage';
-import { UserSettings } from '@/types';
+import { User, Target, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, CreditCard as Edit3, Save, X, Scale, Droplets, Globe, Activity, Calendar, Ruler, UserCheck } from 'lucide-react-native';
+import { clearAllData, getUserSettings, saveUserSettings, getUserProfile, saveUserProfile, formatWeight, formatHeight, calculateBMI, getBMICategory, calculateBMR, calculateTDEE, cmToFeet, feetToCm } from '@/utils/storage';
+import { UserSettings, UserProfile } from '@/types';
 
 interface UserGoals {
   weightGoal: string;
   dailyCalorieGoal: string;
+}
+
+interface ProfileData {
+  name: string;
+  email: string;
+  age: string;
+  height: string;
+  activityLevel: string;
+  gender: string;
 }
 
 function getStyles(darkMode: boolean) {
@@ -75,6 +84,12 @@ function getStyles(darkMode: boolean) {
       fontFamily: 'Inter-Regular',
       color: darkMode ? '#A1A1AA' : '#6B7280',
     },
+    profileStats: {
+      fontSize: 12,
+      fontFamily: 'Inter-Regular',
+      color: darkMode ? '#52525B' : '#9CA3AF',
+      marginTop: 4,
+    },
     editButton: {
       width: 36,
       height: 36,
@@ -82,6 +97,54 @@ function getStyles(darkMode: boolean) {
       backgroundColor: darkMode ? '#27272A' : '#F3F4F6',
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    healthSection: {
+      backgroundColor: darkMode ? '#27272A' : '#FFFFFF',
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    healthTitle: {
+      fontSize: 18,
+      fontFamily: 'Inter-SemiBold',
+      color: darkMode ? '#F3F4F6' : '#1F2937',
+      marginBottom: 16,
+    },
+    healthGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    healthCard: {
+      flex: 1,
+      minWidth: '45%',
+      backgroundColor: darkMode ? '#18181B' : '#F8FAFC',
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+    },
+    healthValue: {
+      fontSize: 18,
+      fontFamily: 'Inter-Bold',
+      color: darkMode ? '#F3F4F6' : '#1F2937',
+      marginBottom: 4,
+    },
+    healthLabel: {
+      fontSize: 12,
+      fontFamily: 'Inter-Medium',
+      color: darkMode ? '#A1A1AA' : '#6B7280',
+      textAlign: 'center',
+    },
+    bmiCategory: {
+      fontSize: 10,
+      fontFamily: 'Inter-Regular',
+      color: darkMode ? '#52525B' : '#9CA3AF',
+      marginTop: 2,
     },
     section: {
       backgroundColor: darkMode ? '#27272A' : '#FFFFFF',
@@ -227,6 +290,49 @@ function getStyles(darkMode: boolean) {
       color: darkMode ? '#F3F4F6' : '#1F2937',
       backgroundColor: darkMode ? '#27272A' : '#FFFFFF',
     },
+    pickerContainer: {
+      borderWidth: 1,
+      borderColor: darkMode ? '#27272A' : '#D1D5DB',
+      borderRadius: 12,
+      backgroundColor: darkMode ? '#27272A' : '#FFFFFF',
+    },
+    pickerButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    pickerText: {
+      fontSize: 16,
+      fontFamily: 'Inter-Regular',
+      color: darkMode ? '#F3F4F6' : '#1F2937',
+    },
+    pickerPlaceholder: {
+      color: darkMode ? '#A1A1AA' : '#9CA3AF',
+    },
+    pickerOptions: {
+      borderTopWidth: 1,
+      borderTopColor: darkMode ? '#3F3F46' : '#E5E7EB',
+    },
+    pickerOption: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: darkMode ? '#3F3F46' : '#F3F4F6',
+    },
+    pickerOptionText: {
+      fontSize: 16,
+      fontFamily: 'Inter-Regular',
+      color: darkMode ? '#F3F4F6' : '#1F2937',
+    },
+    heightInputRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    heightInput: {
+      flex: 1,
+    },
     goalTips: {
       backgroundColor: darkMode ? '#18181B' : '#F8FAFC',
       borderRadius: 12,
@@ -289,29 +395,58 @@ export default function Profile() {
     darkModeEnabled: false,
     weightGoal: '75.0',
     dailyCalorieGoal: '2000',
-    region: 'metric', // 'metric' for EU/metric, 'imperial' for US/UK
+    region: 'metric',
+  });
+  const [profile, setProfile] = useState<UserProfile>({
+    id: 'default_user',
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   });
   const [showGoalsModal, setShowGoalsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [goals, setGoals] = useState<UserGoals>({
     weightGoal: settings.weightGoal || '75.0',
     dailyCalorieGoal: settings.dailyCalorieGoal || '2000',
   });
   const [tempGoals, setTempGoals] = useState<UserGoals>(goals);
+  const [profileData, setProfileData] = useState<ProfileData>({
+    name: profile.name,
+    email: profile.email,
+    age: profile.age?.toString() || '',
+    height: profile.height?.toString() || '',
+    activityLevel: profile.activityLevel || 'moderately_active',
+    gender: profile.gender || 'male',
+  });
+  const [tempProfileData, setTempProfileData] = useState<ProfileData>(profileData);
+  const [showActivityPicker, setShowActivityPicker] = useState(false);
+  const [showGenderPicker, setShowGenderPicker] = useState(false);
 
   useEffect(() => {
-    loadSettings();
+    loadData();
   }, []);
 
-  const loadSettings = async () => {
+  const loadData = async () => {
     try {
       const userSettings = await getUserSettings();
+      const userProfile = await getUserProfile();
       setSettings(userSettings);
+      setProfile(userProfile);
       setGoals({
         weightGoal: userSettings.weightGoal || '75.0',
         dailyCalorieGoal: userSettings.dailyCalorieGoal || '2000',
       });
+      setProfileData({
+        name: userProfile.name,
+        email: userProfile.email,
+        age: userProfile.age?.toString() || '',
+        height: userProfile.height?.toString() || '',
+        activityLevel: userProfile.activityLevel || 'moderately_active',
+        gender: userProfile.gender || 'male',
+      });
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error('Error loading data:', error);
     }
   };
 
@@ -365,7 +500,6 @@ export default function Profile() {
           onPress: async () => {
             try {
               await clearAllData();
-              // Reset to default settings
               setSettings({
                 useMetricWeight: true,
                 useMetricVolume: true,
@@ -388,14 +522,12 @@ export default function Profile() {
       const newGoals = { ...tempGoals };
       setGoals(newGoals);
       
-      // Update settings with new goals
       const newSettings = {
         ...settings,
         weightGoal: newGoals.weightGoal,
         dailyCalorieGoal: newGoals.dailyCalorieGoal,
       };
       
-      // Save to storage
       await saveUserSettings(newSettings);
       setSettings(newSettings);
       setShowGoalsModal(false);
@@ -406,16 +538,81 @@ export default function Profile() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    try {
+      const updatedProfile: UserProfile = {
+        ...profile,
+        name: tempProfileData.name,
+        email: tempProfileData.email,
+        age: tempProfileData.age ? parseInt(tempProfileData.age) : undefined,
+        height: tempProfileData.height ? parseFloat(tempProfileData.height) : undefined,
+        activityLevel: tempProfileData.activityLevel as any,
+        gender: tempProfileData.gender as any,
+      };
+
+      await saveUserProfile(updatedProfile);
+      setProfile(updatedProfile);
+      setProfileData(tempProfileData);
+      setShowProfileModal(false);
+      Alert.alert('Success', 'Your profile has been updated!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to save profile. Please try again.');
+    }
+  };
+
   const openGoalsModal = () => {
     setTempGoals(goals);
     setShowGoalsModal(true);
+  };
+
+  const openProfileModal = () => {
+    setTempProfileData(profileData);
+    setShowProfileModal(true);
   };
 
   const getRegionDisplayText = () => {
     return settings.region === 'metric' ? 'Metric (EU)' : 'Imperial (US/UK)';
   };
 
+  const getActivityLevelText = (level: string) => {
+    const levels = {
+      sedentary: 'Sedentary (Little/no exercise)',
+      lightly_active: 'Lightly Active (Light exercise 1-3 days/week)',
+      moderately_active: 'Moderately Active (Moderate exercise 3-5 days/week)',
+      very_active: 'Very Active (Hard exercise 6-7 days/week)',
+      extremely_active: 'Extremely Active (Very hard exercise, physical job)',
+    };
+    return levels[level as keyof typeof levels] || 'Moderately Active';
+  };
+
+  const getGenderText = (gender: string) => {
+    return gender.charAt(0).toUpperCase() + gender.slice(1);
+  };
+
+  const getHealthStats = () => {
+    if (!profile.height || !profile.age) return null;
+
+    const currentWeight = 75; // This would come from latest weight entry
+    const bmi = calculateBMI(currentWeight, profile.height);
+    const bmr = calculateBMR(currentWeight, profile.height, profile.age, profile.gender || 'male');
+    const tdee = calculateTDEE(bmr, profile.activityLevel || 'moderately_active');
+
+    return { bmi, bmr, tdee };
+  };
+
+  const formatHeightInput = (height: string) => {
+    if (!height) return '';
+    const heightNum = parseFloat(height);
+    if (settings.region === 'imperial') {
+      const { feet, inches } = cmToFeet(heightNum);
+      return `${feet}'${inches}"`;
+    }
+    return `${heightNum} cm`;
+  };
+
   const styles = getStyles(settings.darkModeEnabled);
+  const healthStats = getHealthStats();
 
   return (
     <View style={styles.container}>
@@ -432,14 +629,45 @@ export default function Profile() {
               <User size={32} color="#3B82F6" />
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>John Doe</Text>
-              <Text style={styles.profileEmail}>john.doe@example.com</Text>
+              <Text style={styles.profileName}>{profile.name}</Text>
+              <Text style={styles.profileEmail}>{profile.email}</Text>
+              {profile.age && profile.height && (
+                <Text style={styles.profileStats}>
+                  {profile.age} years • {formatHeightInput(profile.height.toString())}
+                </Text>
+              )}
             </View>
-            <TouchableOpacity style={styles.editButton}>
+            <TouchableOpacity style={styles.editButton} onPress={openProfileModal}>
               <Edit3 size={16} color="#6B7280" />
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Health Overview */}
+        {healthStats && (
+          <View style={styles.healthSection}>
+            <Text style={styles.healthTitle}>Health Overview</Text>
+            <View style={styles.healthGrid}>
+              <View style={styles.healthCard}>
+                <Text style={styles.healthValue}>{healthStats.bmi.toFixed(1)}</Text>
+                <Text style={styles.healthLabel}>BMI</Text>
+                <Text style={styles.bmiCategory}>{getBMICategory(healthStats.bmi)}</Text>
+              </View>
+              <View style={styles.healthCard}>
+                <Text style={styles.healthValue}>{Math.round(healthStats.bmr)}</Text>
+                <Text style={styles.healthLabel}>BMR (kcal/day)</Text>
+              </View>
+              <View style={styles.healthCard}>
+                <Text style={styles.healthValue}>{Math.round(healthStats.tdee)}</Text>
+                <Text style={styles.healthLabel}>TDEE (kcal/day)</Text>
+              </View>
+              <View style={styles.healthCard}>
+                <Text style={styles.healthValue}>{getActivityLevelText(profile.activityLevel || 'moderately_active').split(' ')[0]}</Text>
+                <Text style={styles.healthLabel}>Activity Level</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Goals Section */}
         <View style={styles.section}>
@@ -699,6 +927,190 @@ export default function Profile() {
             >
               <Save size={16} color="#FFFFFF" />
               <Text style={styles.saveModalButtonText}>Save Goals</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Profile Modal */}
+      <Modal
+        visible={showProfileModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <TouchableOpacity onPress={() => setShowProfileModal(false)}>
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={tempProfileData.name}
+                onChangeText={(text) => setTempProfileData({...tempProfileData, name: text})}
+                placeholder="Enter your full name"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={tempProfileData.email}
+                onChangeText={(text) => setTempProfileData({...tempProfileData, email: text})}
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Age</Text>
+              <TextInput
+                style={styles.input}
+                value={tempProfileData.age}
+                onChangeText={(text) => setTempProfileData({...tempProfileData, age: text})}
+                placeholder="Enter your age"
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>
+                Height ({settings.region === 'metric' ? 'cm' : 'feet & inches'})
+              </Text>
+              {settings.region === 'metric' ? (
+                <TextInput
+                  style={styles.input}
+                  value={tempProfileData.height}
+                  onChangeText={(text) => setTempProfileData({...tempProfileData, height: text})}
+                  placeholder="Enter height in cm"
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              ) : (
+                <View style={styles.heightInputRow}>
+                  <View style={styles.heightInput}>
+                    <TextInput
+                      style={styles.input}
+                      value={tempProfileData.height ? cmToFeet(parseFloat(tempProfileData.height)).feet.toString() : ''}
+                      onChangeText={(feet) => {
+                        const inches = tempProfileData.height ? cmToFeet(parseFloat(tempProfileData.height)).inches : 0;
+                        const cm = feetToCm(parseInt(feet) || 0, inches);
+                        setTempProfileData({...tempProfileData, height: cm.toString()});
+                      }}
+                      placeholder="Feet"
+                      keyboardType="numeric"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                  <View style={styles.heightInput}>
+                    <TextInput
+                      style={styles.input}
+                      value={tempProfileData.height ? cmToFeet(parseFloat(tempProfileData.height)).inches.toString() : ''}
+                      onChangeText={(inches) => {
+                        const feet = tempProfileData.height ? cmToFeet(parseFloat(tempProfileData.height)).feet : 0;
+                        const cm = feetToCm(feet, parseInt(inches) || 0);
+                        setTempProfileData({...tempProfileData, height: cm.toString()});
+                      }}
+                      placeholder="Inches"
+                      keyboardType="numeric"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Gender</Text>
+              <View style={styles.pickerContainer}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowGenderPicker(!showGenderPicker)}
+                >
+                  <Text style={[styles.pickerText, !tempProfileData.gender && styles.pickerPlaceholder]}>
+                    {tempProfileData.gender ? getGenderText(tempProfileData.gender) : 'Select gender'}
+                  </Text>
+                  <ChevronRight size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+                {showGenderPicker && (
+                  <View style={styles.pickerOptions}>
+                    {['male', 'female', 'other'].map((gender) => (
+                      <TouchableOpacity
+                        key={gender}
+                        style={styles.pickerOption}
+                        onPress={() => {
+                          setTempProfileData({...tempProfileData, gender});
+                          setShowGenderPicker(false);
+                        }}
+                      >
+                        <Text style={styles.pickerOptionText}>{getGenderText(gender)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Activity Level</Text>
+              <View style={styles.pickerContainer}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowActivityPicker(!showActivityPicker)}
+                >
+                  <Text style={styles.pickerText}>
+                    {getActivityLevelText(tempProfileData.activityLevel)}
+                  </Text>
+                  <ChevronRight size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+                {showActivityPicker && (
+                  <View style={styles.pickerOptions}>
+                    {[
+                      'sedentary',
+                      'lightly_active',
+                      'moderately_active',
+                      'very_active',
+                      'extremely_active'
+                    ].map((level) => (
+                      <TouchableOpacity
+                        key={level}
+                        style={styles.pickerOption}
+                        onPress={() => {
+                          setTempProfileData({...tempProfileData, activityLevel: level});
+                          setShowActivityPicker(false);
+                        }}
+                      >
+                        <Text style={styles.pickerOptionText}>{getActivityLevelText(level)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelModalButton]}
+              onPress={() => setShowProfileModal(false)}
+            >
+              <Text style={styles.cancelModalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.saveModalButton]}
+              onPress={handleSaveProfile}
+            >
+              <UserCheck size={16} color="#FFFFFF" />
+              <Text style={styles.saveModalButtonText}>Save Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
