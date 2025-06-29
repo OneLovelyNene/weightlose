@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { TrendingUp, Calendar, Target, Zap, Weight, ScanLine, Droplets, Plus, ChartBar as BarChart3, Utensils, Sun, Cloud, CloudRain, Snow, CloudDrizzle } from 'lucide-react-native';
+import { TrendingUp, Calendar, Target, Zap, Weight, ScanLine, Droplets, Plus, ChartBar as BarChart3, Utensils, Sun, Cloud, CloudRain, SunSnow as Snow, CloudDrizzle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { getWeightEntries, getFoodEntries, getUserSettings, formatWeight, formatVolume } from '@/utils/storage';
