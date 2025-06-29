@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, Modal } from 'react-native';
-import { User, Target, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, CreditCard as Edit3, Save, X, Scale, Droplets } from 'lucide-react-native';
+import { User, Target, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, CreditCard as Edit3, Save, X, Scale, Droplets, Globe } from 'lucide-react-native';
 import { clearAllData, getUserSettings, saveUserSettings } from '@/utils/storage';
 import { UserSettings } from '@/types';
 
@@ -140,6 +140,30 @@ function getStyles(darkMode: boolean) {
       fontFamily: 'Inter-Regular',
       color: darkMode ? '#A1A1AA' : '#6B7280',
     },
+    regionSelector: {
+      flexDirection: 'row',
+      backgroundColor: darkMode ? '#18181B' : '#F8FAFC',
+      borderRadius: 8,
+      padding: 2,
+    },
+    regionButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+      minWidth: 40,
+      alignItems: 'center',
+    },
+    regionButtonActive: {
+      backgroundColor: '#3B82F6',
+    },
+    regionButtonText: {
+      fontSize: 12,
+      fontFamily: 'Inter-SemiBold',
+      color: darkMode ? '#A1A1AA' : '#6B7280',
+    },
+    regionButtonTextActive: {
+      color: '#FFFFFF',
+    },
     dangerItem: {
       borderBottomColor: darkMode ? '#7F1D1D' : '#FEE2E2',
     },
@@ -265,6 +289,7 @@ export default function Profile() {
     darkModeEnabled: false,
     weightGoal: '75.0',
     dailyCalorieGoal: '2000',
+    region: 'metric', // 'metric' for EU/metric, 'imperial' for US/UK
   });
   const [showGoalsModal, setShowGoalsModal] = useState(false);
   const [goals, setGoals] = useState<UserGoals>({
@@ -290,7 +315,7 @@ export default function Profile() {
     }
   };
 
-  const updateSetting = async (key: keyof UserSettings, value: boolean) => {
+  const updateSetting = async (key: keyof UserSettings, value: boolean | string) => {
     try {
       const newSettings = { ...settings, [key]: value };
       setSettings(newSettings);
@@ -298,6 +323,22 @@ export default function Profile() {
     } catch (error) {
       console.error('Error updating setting:', error);
       Alert.alert('Error', 'Failed to update setting. Please try again.');
+    }
+  };
+
+  const handleRegionChange = async (region: 'metric' | 'imperial') => {
+    try {
+      const newSettings = {
+        ...settings,
+        region,
+        useMetricWeight: region === 'metric',
+        useMetricVolume: region === 'metric',
+      };
+      setSettings(newSettings);
+      await saveUserSettings(newSettings);
+    } catch (error) {
+      console.error('Error updating region:', error);
+      Alert.alert('Error', 'Failed to update region settings. Please try again.');
     }
   };
 
@@ -330,6 +371,7 @@ export default function Profile() {
                 useMetricVolume: true,
                 notificationsEnabled: true,
                 darkModeEnabled: false,
+                region: 'metric',
               });
               Alert.alert('Success', 'All data has been cleared.');
             } catch (error) {
@@ -367,6 +409,10 @@ export default function Profile() {
   const openGoalsModal = () => {
     setTempGoals(goals);
     setShowGoalsModal(true);
+  };
+
+  const getRegionDisplayText = () => {
+    return settings.region === 'metric' ? 'Metric (EU)' : 'Imperial (US/UK)';
   };
 
   const styles = getStyles(settings.darkModeEnabled);
@@ -423,10 +469,52 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
 
-        {/* Units Section */}
+        {/* Regional Units Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Units</Text>
+          <Text style={styles.sectionTitle}>Regional Units</Text>
           
+          <View style={styles.menuItem}>
+            <View style={styles.menuItemLeft}>
+              <Globe size={20} color="#3B82F6" />
+              <View style={styles.unitInfo}>
+                <Text style={styles.menuItemText}>Unit System</Text>
+                <Text style={styles.unitSubtext}>
+                  {getRegionDisplayText()}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.regionSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.regionButton,
+                  settings.region === 'metric' && styles.regionButtonActive
+                ]}
+                onPress={() => handleRegionChange('metric')}
+              >
+                <Text style={[
+                  styles.regionButtonText,
+                  settings.region === 'metric' && styles.regionButtonTextActive
+                ]}>
+                  EU
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.regionButton,
+                  settings.region === 'imperial' && styles.regionButtonActive
+                ]}
+                onPress={() => handleRegionChange('imperial')}
+              >
+                <Text style={[
+                  styles.regionButtonText,
+                  settings.region === 'imperial' && styles.regionButtonTextActive
+                ]}>
+                  US/UK
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <Scale size={20} color="#8B5CF6" />

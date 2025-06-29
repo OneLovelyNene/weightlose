@@ -30,4 +30,5 @@ export interface UserSettings {
   darkModeEnabled: boolean;
   weightGoal?: string;
   dailyCalorieGoal?: string;
+  region?: 'metric' | 'imperial'; // EU vs US/UK
 }

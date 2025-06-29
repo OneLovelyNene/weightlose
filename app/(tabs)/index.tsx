@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { TrendingUp, Calendar, Target, Zap, Weight, ScanLine, Droplets, Plus, ChartBar as BarChart3, Utensils } from 'lucide-react-native';
+import { TrendingUp, Calendar, Target, Zap, Weight, ScanLine, Droplets, Plus, ChartBar as BarChart3, Utensils, Sun, Cloud, CloudRain, Snow, CloudDrizzle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { getWeightEntries, getFoodEntries, getUserSettings, formatWeight, formatVolume } from '@/utils/storage';
@@ -21,13 +21,25 @@ function getStyles(darkMode: boolean) {
       backgroundColor: darkMode ? '#18181B' : '#F8FAFC',
     },
     headerTop: {
-      alignItems: 'flex-end',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
       marginBottom: 20,
+    },
+    weatherContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     temperature: {
       fontSize: 24,
       fontFamily: 'Inter-SemiBold',
       color: darkMode ? '#F3F4F6' : '#1F2937',
+    },
+    location: {
+      fontSize: 12,
+      fontFamily: 'Inter-Regular',
+      color: darkMode ? '#A1A1AA' : '#6B7280',
     },
     greeting: {
       fontSize: 32,
@@ -174,11 +186,17 @@ export default function Dashboard() {
   const [todayWater, setTodayWater] = useState(0);
   const [todayMeals, setTodayMeals] = useState(0);
   const [currentWeight, setCurrentWeight] = useState(0);
+  const [weather, setWeather] = useState({
+    temperature: 22,
+    condition: 'sunny',
+    location: 'New York'
+  });
   const [settings, setSettings] = useState<UserSettings>({
     useMetricWeight: true,
     useMetricVolume: true,
     notificationsEnabled: true,
     darkModeEnabled: false,
+    region: 'metric',
   });
 
   const styles = getStyles(settings.darkModeEnabled);
@@ -186,6 +204,7 @@ export default function Dashboard() {
   // Load data when component mounts
   useEffect(() => {
     loadDashboardData();
+    loadWeatherData();
   }, []);
 
   // Reload data when screen comes into focus (e.g., returning from settings)
@@ -219,6 +238,64 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+    }
+  };
+
+  const loadWeatherData = () => {
+    // Simulate weather data - in a real app, you'd fetch from a weather API
+    const conditions = ['sunny', 'cloudy', 'rainy', 'snowy', 'drizzle'];
+    const randomCondition = conditions[Math.floor(Math.random() * conditions.length)];
+    const baseTemp = 20;
+    const randomTemp = baseTemp + Math.floor(Math.random() * 20) - 10;
+    
+    setWeather({
+      temperature: randomTemp,
+      condition: randomCondition,
+      location: 'Your Location'
+    });
+  };
+
+  const getWeatherIcon = () => {
+    const iconProps = {
+      size: 28,
+      color: settings.darkModeEnabled ? '#F3F4F6' : '#1F2937'
+    };
+
+    switch (weather.condition) {
+      case 'sunny':
+        return <Sun {...iconProps} color="#F59E0B" />;
+      case 'cloudy':
+        return <Cloud {...iconProps} />;
+      case 'rainy':
+        return <CloudRain {...iconProps} color="#3B82F6" />;
+      case 'snowy':
+        return <Snow {...iconProps} color="#E5E7EB" />;
+      case 'drizzle':
+        return <CloudDrizzle {...iconProps} color="#6B7280" />;
+      default:
+        return <Sun {...iconProps} color="#F59E0B" />;
+    }
+  };
+
+  const getTemperatureDisplay = () => {
+    if (settings.region === 'imperial') {
+      // Convert Celsius to Fahrenheit
+      const fahrenheit = (weather.temperature * 9/5) + 32;
+      return `${Math.round(fahrenheit)}°F`;
+    }
+    return `${weather.temperature}°C`;
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const name = "John"; // In a real app, this would come from user profile
+    
+    if (hour < 12) {
+      return `Good morning, ${name}!`;
+    } else if (hour < 17) {
+      return `Good afternoon, ${name}!`;
+    } else {
+      return `Good evening, ${name}!`;
     }
   };
 
@@ -277,14 +354,28 @@ export default function Dashboard() {
     return percentage;
   };
 
+  const getWaterButtonText = (oz: number) => {
+    if (settings.useMetricVolume) {
+      const ml = Math.round(oz * 29.5735);
+      return `${ml}ml`;
+    }
+    return `${oz}oz`;
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.temperature}>98°</Text>
+          <View>
+            <Text style={styles.location}>{weather.location}</Text>
+          </View>
+          <View style={styles.weatherContainer}>
+            {getWeatherIcon()}
+            <Text style={styles.temperature}>{getTemperatureDisplay()}</Text>
+          </View>
         </View>
-        <Text style={styles.greeting}>Good morning!</Text>
+        <Text style={styles.greeting}>{getGreeting()}</Text>
         <Text style={styles.date}>{getCurrentDate()}</Text>
       </View>
 
@@ -371,7 +462,7 @@ export default function Dashboard() {
               onPress={() => addWater(8)}
             >
               <Droplets size={20} color="#FFFFFF" />
-              <Text style={styles.waterButtonTextActive}>8oz</Text>
+              <Text style={styles.waterButtonTextActive}>{getWaterButtonText(8)}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -379,7 +470,7 @@ export default function Dashboard() {
               onPress={() => addWater(16)}
             >
               <Droplets size={20} color="#3B82F6" />
-              <Text style={styles.waterButtonText}>16oz</Text>
+              <Text style={styles.waterButtonText}>{getWaterButtonText(16)}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -387,7 +478,7 @@ export default function Dashboard() {
               onPress={() => addWater(24)}
             >
               <Droplets size={20} color="#3B82F6" />
-              <Text style={styles.waterButtonText}>24oz</Text>
+              <Text style={styles.waterButtonText}>{getWaterButtonText(24)}</Text>
             </TouchableOpacity>
           </View>
         </View>

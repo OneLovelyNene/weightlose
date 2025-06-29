@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   darkModeEnabled: false,
   weightGoal: '75.0',
   dailyCalorieGoal: '2000',
+  region: 'metric',
 };
 
 // Weight Entries
@@ -120,6 +121,8 @@ export const kgToLbs = (kg: number): number => kg * 2.20462;
 export const lbsToKg = (lbs: number): number => lbs / 2.20462;
 export const mlToOz = (ml: number): number => ml * 0.033814;
 export const ozToMl = (oz: number): number => oz / 0.033814;
+export const celsiusToFahrenheit = (celsius: number): number => (celsius * 9/5) + 32;
+export const fahrenheitToCelsius = (fahrenheit: number): number => (fahrenheit - 32) * 5/9;
 
 export const formatWeight = (weight: number, useMetric: boolean): string => {
   if (useMetric) {
@@ -134,5 +137,13 @@ export const formatVolume = (ml: number, useMetric: boolean): string => {
     return `${ml}ml`;
   } else {
     return `${mlToOz(ml).toFixed(1)}oz`;
+  }
+};
+
+export const formatTemperature = (celsius: number, useMetric: boolean): string => {
+  if (useMetric) {
+    return `${celsius}°C`;
+  } else {
+    return `${Math.round(celsiusToFahrenheit(celsius))}°F`;
   }
 };
